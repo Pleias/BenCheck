@@ -1,0 +1,40 @@
+# Example config for running GrammarQualityCheck with GECToR
+#
+# This example shows how to run grammar quality check on a small subset
+# of HellaSwag validation set using the local GECToR model.
+#
+# USAGE:
+#   bash scripts/setup_gector.sh && pip install -e ".[grammar]"
+#   python scripts/run_from_config.py configs/examples/grammar_quality_gector.yaml
+
+benchmark:
+  name: "hellaswag_validation"
+  adapter: "HellaSwagAdapter"
+  params:
+    split: "validation[:50]"  # Small subset for quick testing
+
+model: null  # No global model needed for grammar check
+
+checks:
+  - name: "GrammarQualityCheck"
+    model:
+      type: "gector_grammar"
+      # Local checkpoint path (download it yourself), or a Hugging Face id such as
+      # "gotutiyan/gector-roberta-large-5k" (vocab_path is then ignored)
+      name: "models/gector/gector-2024-roberta-large.th"
+      params:
+        vocab_path: "models/gector/data/output_vocabulary"
+        verb_dict_path: "models/gector/data/verb-form-vocab.txt"
+        tokenizer_name: "roberta-large"
+        device: "cpu"  # Use CPU to avoid GPU memory conflicts
+        batch_size: 16
+        iterations: 3
+        keep_confidence: 0.4
+        min_error_prob: 0.8
+    params:
+      checkpoint_interval: 0  # Disable checkpointing for small test
+
+output:
+  dir: "results/grammar_example"
+  format: "json"
+  save_questions: true

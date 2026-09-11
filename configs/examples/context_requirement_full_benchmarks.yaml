@@ -1,0 +1,121 @@
+# Context Requirement Check - Full Benchmark Suite
+#
+# Re-runs ONLY ContextRequirementCheck on the same datasets from full_benchmarks.yaml
+# with the updated implementation (dynamic random baseline based on n_choices)
+#
+# Datasets (same as full_benchmarks.yaml):
+# - MMLU: Abstract Algebra, Anatomy, Astronomy, College Chemistry (4-choice, random=25%)
+# - TruthfulQA MC1: Truthfulness and fact-checking (variable choices)
+# - ARC-Challenge: Advanced reasoning questions (4-choice, random=25%)
+# - CommonsenseQA: Everyday common sense (5-choice, random=20%)
+#
+# Scoring modes: Both log_likelihood AND generation (ContextRequirementCheck supports both)
+# Runs: 3 runs per (dataset × scoring_mode) for statistical reliability
+# Total combinations: 8 datasets × 2 modes × 3 runs = 48 runs
+# Estimated time: 16-32 hours (depending on model and hardware)
+#
+# USAGE:
+#   # Start vLLM server first:
+#   python -m vllm.entrypoints.openai.api_server \
+#     --model google/gemma-3-12b-it \
+#     --host 0.0.0.0 --port 8008
+#
+#   # Run experiment (recommended: run overnight):
+#   nohup .venv/bin/python scripts/run_experiment.py \
+#     configs/examples/context_requirement_full_benchmarks.yaml \
+#     > context_requirement_full.log 2>&1 &
+#
+#   # Monitor progress:
+#   tail -f context_requirement_full.log
+#
+# RESULTS:
+#   results/context_requirement_full_benchmarks/
+#     ├── mmlu_abstract_algebra_/
+#     │   ├── context_requirement.json
+#     │   └── per_questions/
+#     │       ├── context_requirement_log_likelihood_run_*.json
+#     │       └── context_requirement_generation_run_*.json
+#     ├── mmlu_anatomy_/
+#     ├── mmlu_astronomy_/
+#     ├── mmlu_college_chemistry_/
+#     ├── truthfulqa_mc1_/
+#     ├── arc_challenge_/
+#     ├── commonsenseqa_validation_/
+#     └── experiment_summary.json
+
+experiment:
+  n_runs: 3
+  scoring_modes: ["log_likelihood", "generation"]
+  seed: 42
+
+  benchmarks:
+    # MMLU - Massive Multitask Language Understanding (4-choice, random baseline = 25%)
+    # Select representative subjects across domains
+    - name: "mmlu_abstract_algebra"
+      adapter: "MMLUAdapter"
+      params:
+        config_name: "abstract_algebra"
+        split: "test"  # 100 questions
+
+    - name: "mmlu_anatomy"
+      adapter: "MMLUAdapter"
+      params:
+        config_name: "anatomy"
+        split: "test"  # 135 questions
+
+    - name: "mmlu_astronomy"
+      adapter: "MMLUAdapter"
+      params:
+        config_name: "astronomy"
+        split: "test"  # 152 questions
+
+    - name: "mmlu_college_chemistry"
+      adapter: "MMLUAdapter"
+      params:
+        config_name: "college_chemistry"
+        split: "test"  # 100 questions
+
+    # TruthfulQA - mc1 (single correct answer format, variable choices)
+    - name: "truthfulqa_mc1"
+      adapter: "TruthfulQAAdapter"
+      params:
+        mc_type: "mc1"
+        split: "validation"  # 817 questions
+
+    # ARC - AI2 Reasoning Challenge (Challenge subset, 4-choice, random baseline = 25%)
+    - name: "arc_challenge"
+      adapter: "ARC_Adapter"
+      params:
+        challenge_type: "ARC-Challenge"
+        split: "test"  # 1,172 questions
+
+    # CommonsenseQA - Everyday reasoning (5-choice, random baseline = 20%)
+    - name: "commonsenseqa_validation"
+      adapter: "CommonsenseQAAdapter"
+      params:
+        split: "validation"  # 1,221 questions
+
+  models:
+    # vLLM server (must be running before experiment)
+    # Check: nvidia-smi should show VLLM::EngineCore process
+    - type: "openai"
+      name: "google/gemma-3-12b-it"  # Replace with your model
+      params:
+        base_url: "http://localhost:8008/v1"
+        temperature: 0.0  # Deterministic
+        # For remote vLLM server: http://<server-ip>:8008/v1
+
+  checks:
+    # ONLY ContextRequirementCheck
+    - name: "ContextRequirementCheck"
+      params:
+        transform_type: "both"  # Tests both empty and lorem_ipsum
+        # Note: Random baseline now calculated dynamically (1/n_choices)
+        # Statistical analysis is always enabled
+
+output:
+  dir: "results/context_requirement_full_benchmarks"
+  format: "json"
+  save_individual_runs: true
+  # Results saved incrementally (check progress while running)
+  # Each benchmark saved immediately after completion

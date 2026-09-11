@@ -1,0 +1,39 @@
+# LLMGrammarCheck: grammar and typo detection with an open LLM (vLLM + guided JSON).
+#
+# Flags grammar issues separately in the question prompt, the correct answer,
+# and the distractors. This is the grammar check used in the paper
+# (with Gemma 4 E4B). Needs a GPU and `pip install -e ".[vllm]"`.
+#
+# The sample below covers the first 200 HellaSwag validation questions;
+# drop the slice (split: "validation") to run the full set.
+#
+# USAGE:
+#   python scripts/run_experiment.py configs/examples/llm_grammar.yaml
+
+experiment:
+  n_runs: 1
+  scoring_modes: ["log_likelihood"]  # Required by the runner; not used by this check
+  seed: 42
+
+  benchmarks:
+    - name: "hellaswag_sample"
+      adapter: "HellaSwagAdapter"
+      params:
+        split: "validation[:200]"
+
+  models:
+    - type: "dummy"  # LLMGrammarCheck loads its own vLLM instance (see below)
+
+  checks:
+    - name: "LLMGrammarCheck"
+      model:
+        type: "vllm"
+        name: "google/gemma-4-E4B-it"
+        params:
+          gpu_memory_utilization: 0.5
+          max_model_len: 4096
+
+output:
+  dir: "results/llm_grammar_example"
+  format: "json"
+  save_individual_runs: true
