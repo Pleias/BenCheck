@@ -1,0 +1,116 @@
+# None of the Above Check - Full Benchmark Suite
+#
+# Re-runs ONLY NoneOfTheAboveCheck on the same datasets from full_benchmarks.yaml
+# with the new implementation (generation-based, removes correct answer, adds NOTA at end)
+#
+# Datasets (same as full_benchmarks.yaml):
+# - MMLU: Abstract Algebra, Anatomy, Astronomy, College Chemistry (4-choice)
+# - TruthfulQA MC1: Truthfulness and fact-checking (variable choices)
+# - ARC-Challenge: Advanced reasoning questions (4-choice)
+# - CommonsenseQA: Everyday common sense (5-choice)
+#
+# Scoring modes: Generation ONLY (NoneOfTheAboveCheck requires generation)
+# Runs: 3 runs for statistical reliability
+# Total combinations: 8 datasets × 1 mode × 3 runs = 24 runs
+# Estimated time: 8-16 hours (depending on model and hardware)
+#
+# USAGE:
+#   # Start vLLM server first:
+#   python -m vllm.entrypoints.openai.api_server \
+#     --model google/gemma-3-12b-it \
+#     --host 0.0.0.0 --port 8008
+#
+#   # Run experiment (recommended: run overnight):
+#   nohup python scripts/run_experiment.py configs/examples/none_above_full_benchmarks.yaml \
+#     > none_above_full.log 2>&1 &
+#
+#   # Monitor progress:
+#   tail -f none_above_full.log
+#
+# RESULTS:
+#   results/none_above_full_benchmarks/
+#     ├── mmlu_abstract_algebra_/
+#     │   ├── none_of_the_above.json
+#     │   └── per_questions/none_of_the_above.json
+#     ├── mmlu_anatomy_/
+#     ├── mmlu_astronomy_/
+#     ├── mmlu_college_chemistry_/
+#     ├── truthfulqa_mc1_/
+#     ├── arc_challenge_/
+#     ├── commonsenseqa_validation_/
+#     └── experiment_summary.json
+
+experiment:
+  n_runs: 3
+  scoring_modes: ["generation"]  # NoneOfTheAboveCheck requires generation
+  seed: 42
+
+  benchmarks:
+    # MMLU - Massive Multitask Language Understanding (4-choice)
+    # Select representative subjects across domains
+    - name: "mmlu_abstract_algebra"
+      adapter: "MMLUAdapter"
+      params:
+        config_name: "abstract_algebra"
+        split: "test"  # 100 questions
+
+    - name: "mmlu_anatomy"
+      adapter: "MMLUAdapter"
+      params:
+        config_name: "anatomy"
+        split: "test"  # 135 questions
+
+    - name: "mmlu_astronomy"
+      adapter: "MMLUAdapter"
+      params:
+        config_name: "astronomy"
+        split: "test"  # 152 questions
+
+    - name: "mmlu_college_chemistry"
+      adapter: "MMLUAdapter"
+      params:
+        config_name: "college_chemistry"
+        split: "test"  # 100 questions
+
+    # TruthfulQA - mc1 (single correct answer format, variable choices)
+    - name: "truthfulqa_mc1"
+      adapter: "TruthfulQAAdapter"
+      params:
+        mc_type: "mc1"
+        split: "validation"  # 817 questions
+
+    # ARC - AI2 Reasoning Challenge (Challenge subset, 4-choice)
+    - name: "arc_challenge"
+      adapter: "ARC_Adapter"
+      params:
+        challenge_type: "ARC-Challenge"
+        split: "test"  # 1,172 questions
+
+    # CommonsenseQA - Everyday reasoning (5-choice)
+    - name: "commonsenseqa_validation"
+      adapter: "CommonsenseQAAdapter"
+      params:
+        split: "validation"  # 1,221 questions
+
+  models:
+    # vLLM server (must be running before experiment)
+    # Check: nvidia-smi should show VLLM::EngineCore process
+    - type: "openai"
+      name: "google/gemma-3-12b-it"  # Replace with your model
+      params:
+        base_url: "http://localhost:8008/v1"
+        temperature: 0.0  # Deterministic generation
+        # For remote vLLM server: http://<server-ip>:8008/v1
+
+  checks:
+    # ONLY NoneOfTheAboveCheck
+    - name: "NoneOfTheAboveCheck"
+      params:
+        placeholder_text: "None of the above"
+
+output:
+  dir: "results/none_above_full_benchmarks"
+  format: "json"
+  save_individual_runs: true
+  # Results saved incrementally (check progress while running)
+  # Each benchmark saved immediately after completion

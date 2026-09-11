@@ -1,0 +1,160 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bencheck"
+version = "0.2.0"
+description = "BenCheck - Benchmark quality auditing toolkit"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{name = "BenCheck Contributors"}]
+dependencies = [
+    "tqdm>=4.66.0",
+    "huggingface-hub>=0.20.0",
+    "datasets>=2.16.0",
+    "numpy>=1.24.0",
+    "pyyaml>=6.0",
+    "scipy>=1.10",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1.0",
+    "ruff>=0.4",
+    "codespell>=2.2",
+    "mypy>=1.8.0",
+]
+grammar = [
+    "gector @ git+https://github.com/gotutiyan/gector",
+    "transformers>=4.30.0",
+    "torch>=2.1.0",
+]
+vllm = [
+    "vllm>=0.6.0",
+    "torch>=2.1.0",
+]
+gemini = [
+    "google-genai>=0.3.0",
+]
+openai = [
+    "openai>=1.0.0",
+]
+yaml = [
+    "pyyaml>=6.0",
+]
+llm = [
+    "vllm>=0.6.0",
+    "torch>=2.1.0",
+    "google-genai>=0.3.0",
+    "openai>=1.0.0",
+    "pyyaml>=6.0",
+]
+all = [
+    "vllm>=0.6.0",
+    "torch>=2.1.0",
+    "google-genai>=0.3.0",
+    "openai>=1.0.0",
+    "pyyaml>=6.0",
+    "gector @ git+https://github.com/gotutiyan/gector",
+    "transformers>=4.30.0",
+    "pytest>=7.4",
+    "pytest-cov>=4.1.0",
+    "ruff>=0.4",
+    "codespell>=2.2",
+    "mypy>=1.8.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["bencheck*"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = true
+ignore_missing_imports = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+
+# Exclude patterns
+exclude = [
+    "^tests/",
+    "^examples/",
+    "^scripts/",
+    "^docs/",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--strict-markers",
+    "--tb=short",
+    "--color=yes",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+]
+
+[tool.coverage.run]
+source = ["bencheck"]
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+    "*/site-packages/*",
+]
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if TYPE_CHECKING:",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "pass",
+]
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "N",   # pep8-naming
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+]
+ignore = [
+    "E501",  # line too long (handled by formatter)
+    "B008",  # do not perform function calls in argument defaults
+    "B905",  # zip without strict parameter
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

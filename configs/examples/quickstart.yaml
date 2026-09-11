@@ -1,0 +1,32 @@
+# Quickstart: CPU-only smoke test, no GPU or API key needed.
+#
+# Runs the model-free LengthBiasCheck on the first 100 HellaSwag validation
+# questions. Finishes in about a minute (most of it is the dataset download).
+#
+# USAGE:
+#   python scripts/run_experiment.py configs/examples/quickstart.yaml
+
+experiment:
+  n_runs: 1
+  scoring_modes: ["log_likelihood"]
+  seed: 42
+
+  benchmarks:
+    - name: "hellaswag_sample"
+      adapter: "HellaSwagAdapter"
+      params:
+        split: "validation[:100]"
+
+  models:
+    - type: "dummy"  # Placeholder: LengthBiasCheck does not use a model
+      name: "dummy"
+
+  checks:
+    - name: "LengthBiasCheck"
+      model: null
+      params:
+        length_metric: "words"  # "tokens" needs `transformers` and a tokenizer
+
+output:
+  dir: "results/quickstart"
+  format: "json"

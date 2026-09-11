@@ -1,0 +1,101 @@
+# Context Requirement Check - Reasoning Datasets
+#
+# Re-runs ONLY ContextRequirementCheck on the same datasets from reasoning_datasets.yaml
+# with the updated implementation (dynamic random baseline: 0.5 for 2-choice, 0.25 for 4-choice)
+#
+# Datasets (same as reasoning_datasets.yaml):
+# - PIQA: Physical commonsense reasoning (1,838 questions, 2-choice, random=50%)
+# - Global PIQA (eng_Latn): Multilingual PIQA English subset (100 questions, 2-choice, random=50%)
+# - HellaSwag: Commonsense NLI (10,042 questions, 4-choice, random=25%)
+# - Winogrande: Pronoun resolution (1,267 questions, 2-choice, random=50%)
+#
+# Scoring modes: Both log_likelihood AND generation (ContextRequirementCheck supports both)
+# Runs: 3 runs per (dataset × scoring_mode) for statistical reliability
+# Total combinations: 4 datasets × 2 modes × 3 runs = 24 runs
+# Estimated time: 8-16 hours (depending on model and hardware)
+#
+# USAGE:
+#   # Start vLLM server first:
+#   python -m vllm.entrypoints.openai.api_server \
+#     --model google/gemma-3-12b-it \
+#     --host 0.0.0.0 --port 8008
+#
+#   # Run experiment:
+#   nohup .venv/bin/python scripts/run_experiment.py \
+#     configs/examples/context_requirement_reasoning_datasets.yaml \
+#     > context_requirement_reasoning.log 2>&1 &
+#
+#   # Monitor progress:
+#   tail -f context_requirement_reasoning.log
+#
+# RESULTS:
+#   results/context_requirement_reasoning_datasets/
+#     ├── piqa_validation_/
+#     │   ├── context_requirement.json        # Both log_likelihood and generation
+#     │   └── per_questions/
+#     │       ├── context_requirement_log_likelihood_run_0.json
+#     │       ├── context_requirement_log_likelihood_run_1.json
+#     │       ├── context_requirement_log_likelihood_run_2.json
+#     │       ├── context_requirement_generation_run_0.json
+#     │       ├── context_requirement_generation_run_1.json
+#     │       └── context_requirement_generation_run_2.json
+#     ├── global_piqa_eng_test_/
+#     ├── hellaswag_validation_/
+#     ├── winogrande_validation_/
+#     └── experiment_summary.json
+
+experiment:
+  n_runs: 3
+  scoring_modes: ["log_likelihood", "generation"]
+  seed: 42
+
+  benchmarks:
+    # PIQA - Physical Interaction QA (2-choice, random baseline = 50%)
+    - name: "piqa_validation"
+      adapter: "PIQAAdapter"
+      params:
+        split: "validation"  # Full 1,838 questions
+
+    # Global PIQA - Multilingual PIQA (English only, 2-choice, random baseline = 50%)
+    - name: "global_piqa_eng_test"
+      adapter: "GlobalPIQAAdapter"
+      params:
+        subset: "eng_latn"  # lowercase! (fixed: was eng_Latn)
+        split: "test"  # Only "test" split available (100 questions)
+
+    # HellaSwag - Commonsense NLI (4-choice, random baseline = 25%)
+    - name: "hellaswag_validation"
+      adapter: "HellaSwagAdapter"
+      params:
+        split: "validation"  # Full 10,042 questions
+
+    # Winogrande - Pronoun Resolution (2-choice, random baseline = 50%)
+    - name: "winogrande_validation"
+      adapter: "WinograndeAdapter"
+      params:
+        split: "validation"  # Full 1,267 questions
+
+  models:
+    # vLLM server (must be running before experiment)
+    # Check: nvidia-smi should show VLLM::EngineCore process
+    - type: "openai"
+      name: "google/gemma-3-12b-it"  # Model name from vLLM server
+      params:
+        base_url: "http://localhost:8008/v1"
+        temperature: 0.0  # Deterministic
+        # For remote vLLM server: http://<server-ip>:8008/v1
+
+  checks:
+    # ONLY ContextRequirementCheck
+    - name: "ContextRequirementCheck"
+      params:
+        transform_type: "both"  # Tests both empty and lorem_ipsum
+        # Note: Random baseline now calculated dynamically (1/n_choices)
+        # Statistical analysis is always enabled
+
+output:
+  dir: "results/context_requirement_reasoning_datasets"
+  format: "json"
+  save_individual_runs: true
+  # Individual runs saved for detailed analysis
+  # Aggregated statistics computed automatically

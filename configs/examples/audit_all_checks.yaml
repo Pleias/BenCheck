@@ -1,0 +1,62 @@
+# Full audit: every model-dependent check plus the model-free length check,
+# on 200-question slices of PIQA and HellaSwag.
+#
+# Checks: LengthBiasCheck, EnumerationBiasCheck, NoneOfTheAboveCheck,
+#         ContextRequirementCheck (prompt importance: full / empty / Lorem ipsum).
+# For grammar issues, run configs/examples/llm_grammar.yaml separately.
+#
+# Needs an OpenAI-compatible server (vLLM) and `pip install -e ".[openai]"`.
+# Drop the slices (split: "validation") to audit the full splits.
+#
+# USAGE:
+#   # Start vLLM server first:
+#   python -m vllm.entrypoints.openai.api_server \
+#     --model google/gemma-3-12b-it \
+#     --host 0.0.0.0 --port 8008
+#
+#   python scripts/run_experiment.py configs/examples/audit_all_checks.yaml
+
+experiment:
+  n_runs: 1
+  scoring_modes: ["log_likelihood", "generation"]
+  seed: 42
+
+  benchmarks:
+    - name: "piqa_sample"
+      adapter: "PIQAAdapter"
+      params:
+        split: "validation[:200]"
+
+    - name: "hellaswag_sample"
+      adapter: "HellaSwagAdapter"
+      params:
+        split: "validation[:200]"
+
+  models:
+    - type: "openai"
+      name: "google/gemma-3-12b-it"  # Must match the model served by vLLM
+      params:
+        base_url: "http://localhost:8008/v1"
+
+  checks:
+    # Model-free (runs once per dataset)
+    - name: "LengthBiasCheck"
+      model: null
+      params:
+        length_metric: "words"
+
+    # Model-dependent (run for each scoring mode, using experiment.models)
+    - name: "EnumerationBiasCheck"
+
+    - name: "NoneOfTheAboveCheck"
+      params:
+        placeholder_text: "None of the above"
+
+    - name: "ContextRequirementCheck"
+      params:
+        transform_type: "both"  # empty prompt and Lorem-ipsum prompt
+
+output:
+  dir: "results/audit_all_checks"
+  format: "json"
+  save_individual_runs: true

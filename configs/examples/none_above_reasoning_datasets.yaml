@@ -1,0 +1,92 @@
+# None of the Above Check - Reasoning Datasets
+#
+# Re-runs ONLY NoneOfTheAboveCheck on the same datasets from reasoning_datasets.yaml
+# with the new implementation (generation-based, removes correct answer, adds NOTA at end)
+#
+# Datasets (same as reasoning_datasets.yaml):
+# - PIQA: Physical commonsense reasoning (1,838 questions, 2-choice)
+# - Global PIQA (eng_Latn): Multilingual PIQA English subset (100 questions, 2-choice)
+# - HellaSwag: Commonsense NLI (10,042 questions, 4-choice)
+# - Winogrande: Pronoun resolution (1,267 questions, 2-choice)
+#
+# Scoring modes: Generation ONLY (NoneOfTheAboveCheck requires generation)
+# Runs: 3 runs for statistical reliability
+# Total combinations: 4 datasets × 1 mode × 3 runs = 12 runs
+# Estimated time: 4-8 hours (depending on model and hardware)
+#
+# USAGE:
+#   # Start vLLM server first:
+#   python -m vllm.entrypoints.openai.api_server \
+#     --model google/gemma-3-12b-it \
+#     --host 0.0.0.0 --port 8008
+#
+#   # Run experiment:
+#   nohup python scripts/run_experiment.py configs/examples/none_above_reasoning_datasets.yaml \
+#     > none_above_reasoning.log 2>&1 &
+#
+#   # Monitor progress:
+#   tail -f none_above_reasoning.log
+#
+# RESULTS:
+#   results/none_above_reasoning_datasets/
+#     ├── piqa_validation_/
+#     │   ├── none_of_the_above.json
+#     │   └── per_questions/none_of_the_above.json
+#     ├── global_piqa_eng_test_/
+#     ├── hellaswag_validation_/
+#     ├── winogrande_validation_/
+#     └── experiment_summary.json
+
+experiment:
+  n_runs: 3
+  scoring_modes: ["generation"]  # NoneOfTheAboveCheck requires generation
+  seed: 42
+
+  benchmarks:
+    # PIQA - Physical Interaction QA (2-choice)
+    - name: "piqa_validation"
+      adapter: "PIQAAdapter"
+      params:
+        split: "validation"  # Full 1,838 questions
+
+    # Global PIQA - Multilingual PIQA (English only, 2-choice)
+    - name: "global_piqa_eng_test"
+      adapter: "GlobalPIQAAdapter"
+      params:
+        subset: "eng_latn"  # lowercase! (fixed: was eng_Latn)
+        split: "test"  # Only "test" split available (100 questions)
+
+    # HellaSwag - Commonsense NLI (4-choice)
+    - name: "hellaswag_validation"
+      adapter: "HellaSwagAdapter"
+      params:
+        split: "validation"  # Full 10,042 questions
+
+    # Winogrande - Pronoun Resolution (2-choice)
+    - name: "winogrande_validation"
+      adapter: "WinograndeAdapter"
+      params:
+        split: "validation"  # Full 1,267 questions
+
+  models:
+    # vLLM server (must be running before experiment)
+    # Check: nvidia-smi should show VLLM::EngineCore process
+    - type: "openai"
+      name: "google/gemma-3-12b-it"  # Model name from vLLM server
+      params:
+        base_url: "http://localhost:8008/v1"
+        temperature: 0.0  # Deterministic generation
+        # For remote vLLM server: http://<server-ip>:8008/v1
+
+  checks:
+    # ONLY NoneOfTheAboveCheck
+    - name: "NoneOfTheAboveCheck"
+      params:
+        placeholder_text: "None of the above"
+
+output:
+  dir: "results/none_above_reasoning_datasets"
+  format: "json"
+  save_individual_runs: true
+  # Individual runs saved for detailed analysis
+  # Aggregated statistics computed automatically

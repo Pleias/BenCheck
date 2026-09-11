@@ -1,0 +1,52 @@
+# Byte-compiled / optimized files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+.Python
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Virtual environments / env files
+.venv/
+.env
+*.env
+
+# Testing / Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Linters / Type checkers
+.mypy_cache/
+.ruff_cache/
+.pytype/
+
+# Jupyter artifacts
+.ipynb_checkpoints/
+
+# IDE
+.idea/
+.vscode/
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# Editor backup files
+*~
+*.swp
+*.swo
+
+# Models (large binary files, downloaded separately)
+models/
+
+# Experiment outputs (written by scripts/run_experiment.py)
+results/
