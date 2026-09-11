@@ -46,7 +46,7 @@ logs/
 *.swo
 
 # Models (large binary files, downloaded separately)
-models/
+/models/
 
 # Experiment outputs (written by scripts/run_experiment.py)
 results/
